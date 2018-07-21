@@ -99,6 +99,8 @@
 
 				return true;
 			}
+			canvas.toUDMF = () => new UDMF(document.querySelectorAll('.sector'));
+
 			canvas.state = {
 				state: ['drawing', 'sector'] // Состояние
 			};
@@ -184,11 +186,18 @@
 		}
 
 		class UDMF {
-			constructor(sector) {
-				this.vertexes = sector.path.map(e => new Vertex(e));
-				this.linedefs = this.vertexes.map((e, i) => i === this.vertexes.length - 1 ? new Linedef([e, this.vertexes[0]], this.vertexes) : new Linedef([e, this.vertexes[i + 1]], this.vertexes));
-				this.sidedefs = [new Sidedef(0)];
-				this.sectors  = [new Sector()];
+			constructor(elements) {
+				this.vertexes = [];
+				this.linedefs = [];
+				this.sidedefs = [];
+				this.sectors = [];
+
+				elements.forEach((element, i) => {
+					this.vertexes.push(...element.path.map(e => new Vertex(e)));
+					this.linedefs.push(...this.vertexes.map((e, i) => i === this.vertexes.length - 1 ? new Linedef([e, this.vertexes[0]], this.vertexes) : new Linedef([e, this.vertexes[i + 1]], this.vertexes)));
+					this.sidedefs.push(new Sidedef(i));
+					this.sectors.push(new Sector());
+				});
 			}
 
 			toJSON() {
