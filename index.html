@@ -336,6 +336,7 @@
 
 		sidedefs.forEach((side, i) => {
 			const sector = side[1].sector;
+			if(!sectors[sector]) debugger;
 			sectors[sector].sidedef = side;
 			linedefs.forEach((linedef, j) => {
 				if(linedef[1].sidefront === i

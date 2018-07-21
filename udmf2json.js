@@ -21,7 +21,8 @@ window.UDMF2JSON = {
                 .replace(/;/g, ',')                                                         // ; -> ,
                 .replace(/(linedef|sidedef|vertex|sector|thing)\s*\n*{/g, '["$1", {')       // XXX{ -> ["XXX", {]
                 .replace(/}/g, '}], ')                                                      // } -> }], 
-                .replace(/\n(.+?):/g, '"$1":')                                              // v1: -> "v1":
+                .replace(/\n\s*(.+?)\s*:/g, '"$1":')                                              // v1: -> "v1":
+                .replace(/(:\s*)([A-Za-z_][A-Za-z0-9_]+)/g, '$1"$2"')
                 .replace(/,(\s*\n*\s*})/g, '$1')                                            // Remove last "," (attributes)
                 .replace(/,\s*$/, '')                                                       // Remove last "," (file)
             + '\n]';
