@@ -41,7 +41,6 @@
 		}
 
 		.cursor {
-			display: none;
 			position: absolute;
 			/* TODO: Движение за указателем */
 			/* Как вариант, вообще можно с помощью cursor: и картинки...
@@ -58,7 +57,9 @@
 			transform: translate(-50%, -50%)
 		}
 
-		.line { /* TODO: */ }
+		.line {
+			/* TODO: */
+		}
 	</style>
 </head>
 
@@ -83,38 +84,38 @@
 			}
 
 			sector.addEventListener('mouseenter', () => {
-				// if (event.target === document.querySelector('.cursor')) return;
-
 				sector.style.background = 'blue';
 			}, true)
 
 			sector.addEventListener('mouseleave', () => {
-				// if (event.target === document.querySelector('.cursor')) return;
-
 				sector.style.background = 'red';
 			}, true)
 		}
 
-		document.querySelector('#canvas').addEventListener('mousemove', (event) => {
-			// if (event.target === document.querySelector('.cursor')) return;
+		/** Возвращает координаты, привязанные к сетке
+		 */
+		const round = (x, y) => [Math.floor(x / GRID[0] + .5) * GRID[0],Math.floor(y / GRID[1] + .5) * GRID[0]];
 
-			console.log(event.offsetX, event.offsetY);
-			// document.querySelector('.cursor').style.left = `${(event.offsetX)/*  * GRID[0] */}px`;
-			// document.querySelector('.cursor').style.top = `${(event.offsetY)/*  * GRID[1] */}px`;
+		document.querySelector('#canvas').addEventListener('mousemove', (event) => {
+			const [x, y] = [event.offsetX, event.offsetY]
+			console.log(x, y);
+
+			// document.querySelector('.cursor').style.left = `${round(x, y)[0]}px`;
+			// document.querySelector('.cursor').style.top = `${round(x, y)[1]}px`;
 		}, true)
 
 		document.querySelector('#canvas').addEventListener('mousedown', (event) => {
 			const [x, y] = [event.offsetX, event.offsetY]
-			//[event.target.offsetLeft, event.target.offsetTop];
 			console.log(x, y);
+			const [xr, yr] = round(x, y);
 
 			const vertex = document.createElement('div');
 			vertex.classList.add('vertex');
-			vertex.style.left = `${x}px`;
-			vertex.style.top = `${y}px`;
+			vertex.style.left = `${xr}px`;
+			vertex.style.top = `${yr}px`;
 			document.querySelector('#elements').appendChild(vertex);
 
-			sector.path.push([x, y]);
+			sector.path.push([xr, yr]);
 			sector.updatePath();
 		}, true);
 	</script>
