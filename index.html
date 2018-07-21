@@ -46,6 +46,7 @@
 
 		.sector:hover {
 			background: blue;
+			filter: brightness(1.5);
 		}
 
 		.cursor {
@@ -79,6 +80,10 @@
 		</div>
 		<!-- <div class="cursor vertex"></div> -->
 	</div>
+	<textarea id="input"></textarea>
+	<button onclick="loadUDMF()">Загрузить карту</button>
+
+	<script src="udmf2json.js"></script>
 
 	<script>
 		const canvas = document.querySelector('#canvas');
@@ -123,6 +128,14 @@
 
 			toUDMF() {
 				return `vertex {\n\tx: ${this.x};\n\ty: ${this.y};\n}`;
+			}
+
+			static createElement(x, y) {
+				const vertex = document.createElement('div');
+				vertex.classList.add('vertex');
+				vertex.style.left = `${x}px`;
+				vertex.style.top = `${y}px`;
+				document.querySelector('#elements').appendChild(vertex);
 			}
 		}
 
@@ -283,11 +296,7 @@
 			console.log(x, y);
 			const [xr, yr] = round(x, y);
 
-			const vertex = document.createElement('div');
-			vertex.classList.add('vertex');
-			vertex.style.left = `${xr}px`;
-			vertex.style.top = `${yr}px`;
-			document.querySelector('#elements').appendChild(vertex);
+			const vertex = Vertex.createElement(xr, yr);
 
 			let [state, type, element] = canvas.state.state;
 
@@ -307,6 +316,57 @@
 				}
 			}
 		}, true);
+	</script>
+
+	<script>
+	function loadUDMF() {
+		class UDMFSector {
+			constructor(vertexes, linedefs, sidedefs) {
+				//
+			}
+		}
+
+		const input = document.querySelector('#input').value;
+		const json = UDMF2JSON.udmf2json(input);
+
+		const vertexes = json.filter(e => e[0] === 'vertex');
+		const linedefs = json.filter(e => e[0] === 'linedef');
+		const sidedefs = json.filter(e => e[0] === 'sidedef');
+		const sectors = json.filter(e => e[0] === 'sector');
+
+		sidedefs.forEach((side, i) => {
+			const sector = side[1].sector;
+			sectors[sector].sidedef = side;
+			linedefs.forEach((linedef, j) => {
+				if(linedef[1].sidefront === i
+				|| linedef[1].sideback === i) {
+					if(!sectors[sector].linedefs) sectors[sector].linedefs = [];
+					sectors[sector].linedefs.push(j);
+				}
+			});
+		});
+
+		const lines = linedefs.map(e => getLine(e[1].v1, e[1].v2));
+
+		function getLine(v1, v2) {
+			return [[vertexes[v1][1].x, vertexes[v1][1].y], [vertexes[v2][1].x, vertexes[v2][1].y]];
+		}
+
+		const __HARDCODED__ = 240; // FIXME:
+
+		// Draw
+		sectors.forEach((sector, i) => {
+			const el = Sector.createElement();
+			sector.linedefs.forEach((linedef, j) => {
+				el.path.push(...getLine(linedefs[linedef][1].v1, linedefs[linedef][1].v2).map(e => e.map(e => e + __HARDCODED__)))
+			})
+			el.updatePath();
+			el.style.backgroundImage = `url(./resources/${sector[1].texturefloor}.png)`;
+			el.classList.remove('sector-incomplete');
+		})
+
+		vertexes.forEach(e => Vertex.createElement(e[1].x + __HARDCODED__, e[1].y + __HARDCODED__))
+	}
 	</script>
 </body>
 
