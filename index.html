@@ -40,6 +40,14 @@
 			/* TODO: Система перевода думометров в пиксели */
 		}
 
+		.sector-incomplete {
+			background: pink !important;
+		}
+
+		.sector:hover {
+			background: blue;
+		}
+
 		.cursor {
 			position: absolute;
 			/* TODO: Движение за указателем */
@@ -68,12 +76,40 @@
 		<div class="background"></div>
 		<div class="grid"></div>
 		<div id="elements">
-			<div class="sector"></div>
 		</div>
 		<!-- <div class="cursor vertex"></div> -->
 	</div>
 
 	<script>
+		const canvas = document.querySelector('#canvas');
+		{
+			canvas.events = {};
+			canvas.on = (event, func) => {
+				if(typeof func !== 'function') throw new TypeError('второй аргумент должен быть функцией!');
+				if(!(canvas.events[event] instanceof Array)) canvas.events[event] = [];
+
+				canvas.events[event].push(func);
+			}
+			canvas.emit = (event, ...args) => {
+				if(!(canvas.events[event] instanceof Array)) return false;
+
+				for(const listener of canvas.events[event]) {
+					listener(...args);
+				}
+
+				return true;
+			}
+			canvas.state = {
+				state: ['drawing', 'sector'] // Состояние
+			};
+			canvas.setState = (obj) => {
+				Object.assign(canvas.state, obj);
+				canvas.emit('state.update');
+			}
+
+			canvas.setState({});;
+		}
+
 		class Vertex {
 			constructor([x, y]) {
 				[this.x, this.y] = [x, y];
@@ -130,6 +166,21 @@
 			toUDMF() {
 				return `sector {\n}`;
 			}
+
+			static createElement() {
+				const el = document.createElement('div');
+				el.classList.add('sector');
+				el.classList.add('sector-incomplete');
+				el.path = [];
+
+				el.updatePath = () => {
+					el.style.clipPath = `polygon(${el.path.map(e => e.map(e => e + 'px').join(' '))})`;
+				};
+
+				document.querySelector('#elements').appendChild(el);
+
+				return el;
+			}
 		}
 
 		class UDMF {
@@ -177,23 +228,6 @@
 			}
 		}
 
-
-		const sector = document.querySelector('.sector'); // FIXME: Remove
-		{
-			sector.path = [];
-			sector.updatePath = () => {
-				sector.style.clipPath = `polygon(${sector.path.map(e => e.map(e => e + 'px').join(' '))})`;
-			};
-
-			sector.addEventListener('mouseenter', () => {
-				sector.style.background = 'blue';
-			}, true);
-
-			sector.addEventListener('mouseleave', () => {
-				sector.style.background = 'red';
-			}, true);
-		}
-
 		const grid = document.querySelector('.grid');
 		{
 			grid.sizex = 16;
@@ -234,6 +268,8 @@
 		}, true)
 
 		document.querySelector('#canvas').addEventListener('mousedown', (event) => {
+			if(event.target.classList.contains('vertex')) return;
+
 			const [x, y] = [event.offsetX, event.offsetY]
 			console.log(x, y);
 			const [xr, yr] = round(x, y);
@@ -244,10 +280,35 @@
 			vertex.style.top = `${yr}px`;
 			document.querySelector('#elements').appendChild(vertex);
 
-			sector.path.push([xr, yr]);
-			sector.updatePath();
+			let [state, type, element] = canvas.state.state;
+
+			if(state === 'drawing' && type === 'sector') {
+				if(!element) {
+					element = Sector.createElement();
+					canvas.setState({state: [state, type, element]});
+				}
+
+				if(String(element.path[0]) === String([xr, yr])) {
+					// Close sector
+					element.classList.remove('sector-incomplete');
+					canvas.setState({state: [state, type]});
+				} else {
+					element.path.push([xr, yr]);
+					element.updatePath();
+				}
+			}
 		}, true);
 	</script>
 </body>
 
 </html>
+
+<!-- 
+
+	Состояния:
+		drawing
+			sector
+				{sector}
+			vertex
+			line
+ -->
