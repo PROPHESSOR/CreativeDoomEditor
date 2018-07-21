@@ -41,12 +41,13 @@
 		}
 
 		.cursor {
+			display: none;
 			position: absolute;
 			/* TODO: Движение за указателем */
 			/* Как вариант, вообще можно с помощью cursor: и картинки...
 				Но тогда будет сложнее делать привязку к сетке  */
 			background: yellow;
-			transform: translate(-50%, -50%)
+			transform: translate(-50%, -50%);
 		}
 
 		.vertex {
@@ -68,7 +69,7 @@
 		<div id="elements">
 			<div class="sector"></div>
 		</div>
-		<div class="cursor vertex"></div>
+		<!-- <div class="cursor vertex"></div> -->
 	</div>
 
 	<script>
@@ -80,18 +81,31 @@
 			sector.updatePath = () => {
 				sector.style.clipPath = `polygon(${sector.path.map(e => e.map(e => e + 'px').join(' '))})`;
 			}
+
+			sector.addEventListener('mouseenter', () => {
+				// if (event.target === document.querySelector('.cursor')) return;
+
+				sector.style.background = 'blue';
+			}, true)
+
+			sector.addEventListener('mouseleave', () => {
+				// if (event.target === document.querySelector('.cursor')) return;
+
+				sector.style.background = 'red';
+			}, true)
 		}
 
 		document.querySelector('#canvas').addEventListener('mousemove', (event) => {
-			if (event.target === document.querySelector('.cursor')) return;
+			// if (event.target === document.querySelector('.cursor')) return;
 
 			console.log(event.offsetX, event.offsetY);
-			document.querySelector('.cursor').style.left = `${(event.offsetX)/*  * GRID[0] */}px`;
-			document.querySelector('.cursor').style.top = `${(event.offsetY)/*  * GRID[1] */}px`;
+			// document.querySelector('.cursor').style.left = `${(event.offsetX)/*  * GRID[0] */}px`;
+			// document.querySelector('.cursor').style.top = `${(event.offsetY)/*  * GRID[1] */}px`;
 		}, true)
 
 		document.querySelector('#canvas').addEventListener('mousedown', (event) => {
-			const [x, y] = [event.target.offsetLeft, event.target.offsetTop];
+			const [x, y] = [event.offsetX, event.offsetY]
+			//[event.target.offsetLeft, event.target.offsetTop];
 			console.log(x, y);
 
 			const vertex = document.createElement('div');
