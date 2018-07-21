@@ -74,8 +74,6 @@
 	</div>
 
 	<script>
-		const GRID = [16, 16];
-
 		const sector = document.querySelector('.sector'); // FIXME: Remove
 		{
 			sector.path = [];
@@ -92,16 +90,43 @@
 			}, true)
 		}
 
+		const grid = document.querySelector('.grid');
+		{
+			grid.sizex = 16;
+			grid.sizey = 16;
+			grid.scale = (x = 16, y = x) => {
+				grid.sizex = x;
+				grid.sizey = y;
+				grid.style.backgroundSize = `${x}px ${y}px`;
+			}
+		}
+
 		/** Возвращает координаты, привязанные к сетке
 		 */
-		const round = (x, y) => [Math.floor(x / GRID[0] + .5) * GRID[0],Math.floor(y / GRID[1] + .5) * GRID[0]];
+		const round = (x, y) => [Math.floor(x / grid.sizex + .5) * grid.sizex, Math.floor(y / grid.sizey + .5) * grid.sizex];
+
+		window.addEventListener('keydown', (event) => {
+			console.log(event.keyCode);
+
+			switch (event.keyCode) {
+				case 219:
+					grid.scale(grid.sizex >> 1);
+					break;
+				case 221:
+					grid.scale(grid.sizex << 1);
+					break;
+				default:
+					break;
+			}
+		})
 
 		document.querySelector('#canvas').addEventListener('mousemove', (event) => {
 			const [x, y] = [event.offsetX, event.offsetY]
 			console.log(x, y);
+			const [xr, yr] = round(x, y);
 
-			// document.querySelector('.cursor').style.left = `${round(x, y)[0]}px`;
-			// document.querySelector('.cursor').style.top = `${round(x, y)[1]}px`;
+			// document.querySelector('.cursor').style.left = `${xr}px`;
+			// document.querySelector('.cursor').style.top = `${yr}px`;
 		}, true)
 
 		document.querySelector('#canvas').addEventListener('mousedown', (event) => {
