@@ -90,6 +90,8 @@
 	<script src="udmf2json.js"></script>
 
 	<script>
+		const EXPERIMENTAL_RENDERER = true;
+
 		const canvas = document.querySelector('#canvas');
 		// Init
 		{
@@ -187,6 +189,21 @@
 			}
 		}
 
+		// FIXME:
+		const svgPathBuilder = (path) => {
+			let out = "";
+			path.forEach((e, i) => {
+				if(i === 0) {
+					return out += `M${e.join(' ')} `; // TODO: Это можно сделать в одну строку
+				}
+
+				out += `L${e.join(' ')} `;
+			});
+			out += 'Z';
+
+			return out;
+		}
+
 		class Sector {
 			toUDMF() {
 				return `sector {\n}`;
@@ -199,7 +216,36 @@
 				el.path = [];
 
 				el.updatePath = () => {
-					el.style.clipPath = `polygon(${el.path.map(e => e.map(e => e + 'px').join(' '))})`;
+					const subpathes = [];
+					let idx = 0;
+					el.path.forEach((e, i) => {
+						if(i !== idx && JSON.stringify(e) === JSON.stringify(el.path[idx])) {
+							subpathes.push(el.path.slice(idx, i));
+							idx = i + 1;
+						}
+					})
+
+					if(subpathes.length === 1 || !EXPERIMENTAL_RENDERER)
+						el.style.clipPath = `polygon(${el.path.map(e => e.map(e => e + 'px').join(' '))})`;
+					else {
+						const time = Date.now();
+						el.style.clipPath = 'none'
+						const bg = el.style.backgroundImage.slice(5, -2);
+						el.style.backgroundImage = "none";
+						el.style.background = "none";
+						debugger;
+						let out = `<svg width="100%" height="100%"><defs><mask id="substract${time}"><rect width="100%" height="100%" fill="white"/>`;
+						subpathes.forEach((subpath, i) => {
+							if(i === 0) return;
+							out += `<path d="${svgPathBuilder(subpath)}"></path>`;
+						});
+						out += `</mask>
+						<pattern id="bg${time}" patternUnits="userSpaceOnUse" width="100%" height="100%">
+    						<use xlink:href="${bg}" x="0" y="0" width="100%" height="100%"></use>
+  						</pattern><!-- Oh f*ck this policy -->
+						</defs><path d="${svgPathBuilder(subpathes[0])}" mask="url(#substract${time})" style="fill:green" fill="url(\"#bg${time}\")"></path></svg>`;
+						el.innerHTML = out;
+					}
 				};
 
 				document.querySelector('#elements').appendChild(el);
@@ -330,12 +376,6 @@
 
 	<script>
 	function loadUDMF() {
-		class UDMFSector {
-			constructor(vertexes, linedefs, sidedefs) {
-				//
-			}
-		}
-
 		const input = document.querySelector('#input').value;
 		const json = UDMF2JSON.udmf2json(input);
 
@@ -346,7 +386,6 @@
 
 		sidedefs.forEach((side, i) => {
 			const sector = side[1].sector;
-			if(!sectors[sector]) debugger;
 			sectors[sector].sidedef = side;
 			linedefs.forEach((linedef, j) => {
 				if(linedef[1].sidefront === i
@@ -356,8 +395,6 @@
 				}
 			});
 		});
-
-		const lines = linedefs.map(e => getLine(e[1].v1, e[1].v2));
 
 		function getLine(v1, v2) {
 			return [[vertexes[v1][1].x, vertexes[v1][1].y], [vertexes[v2][1].x, vertexes[v2][1].y]];
@@ -370,10 +407,9 @@
 				el.path.push(...getLine(linedefs[linedef][1].v1, linedefs[linedef][1].v2).map(e => [e[0] + canvas.SCW / 2, e[1] + canvas.SCH / 2]))
 			})
 			el.path.push(el.path[0]);
-			el.updatePath();
 			el.style.backgroundImage = `url(./resources/${sector[1].texturefloor}.png)`;
+			el.updatePath();
 			el.classList.remove('sector-incomplete');
-			debugger;
 		})
 
 		vertexes.forEach(e => Vertex.createElement(e[1].x + canvas.SCW / 2, e[1].y + canvas.SCH / 2))
