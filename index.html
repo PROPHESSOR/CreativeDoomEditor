@@ -90,13 +90,13 @@
 	<script src="udmf2json.js"></script>
 
 	<script>
-		const EXPERIMENTAL_RENDERER = true;
+		const EXPERIMENTAL_RENDERER = false;
 
 		const canvas = document.querySelector('#canvas');
 		// Init
 		{
-			canvas.SCW = 640;
-			canvas.SCH = 480;
+			canvas.SCW = 2048;
+			canvas.SCH = 4096;
 			canvas.style.width = `${canvas.SCW}px`;
 			canvas.style.height = `${canvas.SCH}px`;
 			scroll(canvas.SCW / 2 - innerWidth / 2, canvas.SCH / 2 - innerHeight / 2)
