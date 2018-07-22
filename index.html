@@ -7,10 +7,14 @@
 	<meta http-equiv="X-UA-Compatible" content="ie=edge">
 	<title></title>
 	<style>
+		html,
+		body {
+			margin: 0;
+			padding: 0;
+		}
+
 		#canvas {
 			position: relative;
-			width: 640px;
-			height: 480px;
 		}
 
 		.background {
@@ -87,7 +91,13 @@
 
 	<script>
 		const canvas = document.querySelector('#canvas');
+		// Init
 		{
+			canvas.SCW = 640;
+			canvas.SCH = 480;
+			canvas.style.width = `${canvas.SCW}px`;
+			canvas.style.height = `${canvas.SCH}px`;
+			scroll(canvas.SCW / 2 - innerWidth / 2, canvas.SCH / 2 - innerHeight / 2)
 			canvas.events = {};
 			canvas.on = (event, func) => {
 				if(typeof func !== 'function') throw new TypeError('второй аргумент должен быть функцией!');
@@ -353,20 +363,20 @@
 			return [[vertexes[v1][1].x, vertexes[v1][1].y], [vertexes[v2][1].x, vertexes[v2][1].y]];
 		}
 
-		const __HARDCODED__ = 240; // FIXME:
-
 		// Draw
 		sectors.forEach((sector, i) => {
 			const el = Sector.createElement();
 			sector.linedefs.forEach((linedef, j) => {
-				el.path.push(...getLine(linedefs[linedef][1].v1, linedefs[linedef][1].v2).map(e => e.map(e => e + __HARDCODED__)))
+				el.path.push(...getLine(linedefs[linedef][1].v1, linedefs[linedef][1].v2).map(e => [e[0] + canvas.SCW / 2, e[1] + canvas.SCH / 2]))
 			})
+			el.path.push(el.path[0]);
 			el.updatePath();
 			el.style.backgroundImage = `url(./resources/${sector[1].texturefloor}.png)`;
 			el.classList.remove('sector-incomplete');
+			debugger;
 		})
 
-		vertexes.forEach(e => Vertex.createElement(e[1].x + __HARDCODED__, e[1].y + __HARDCODED__))
+		vertexes.forEach(e => Vertex.createElement(e[1].x + canvas.SCW / 2, e[1].y + canvas.SCH / 2))
 	}
 	</script>
 </body>
