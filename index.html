@@ -48,6 +48,11 @@
             background: pink !important;
         }
         
+        .selected {
+            background: yellow;
+            filter: brightness(2.0);
+        }
+        
         .sector:hover {
             background: blue;
             filter: brightness(1.5);
@@ -121,7 +126,7 @@
             canvas.toUDMF = () => new UDMF(document.querySelectorAll('.sector'));
 
             canvas.state = {
-                state: ['drawing', 'sector'] // Состояние
+                state: ['select', 'sector'] // Состояние
             };
             canvas.setState = (obj) => {
                 Object.assign(canvas.state, obj);
@@ -355,27 +360,36 @@
             console.log(x, y);
             const [xr, yr] = round(x, y);
 
-            const vertex = Vertex.createElement(xr, yr);
-
             let [state, type, element] = canvas.state.state;
 
-            if (state === 'drawing' && type === 'sector') {
-                if (!element) {
-                    element = Sector.createElement();
-                    canvas.setState({
-                        state: [state, type, element]
-                    });
-                }
+            if (state === 'select') {
+                event.target.classList.toggle('selected');
+                canvas.setState({
+                    state: [state, type, [...element, event.target]] // TODO: Сделать toggle (через new Set)
+                })
+            }
 
-                if (String(element.path[0]) === String([xr, yr])) {
-                    // Close sector
-                    element.classList.remove('sector-incomplete');
-                    canvas.setState({
-                        state: [state, type]
-                    });
-                } else {
-                    element.path.push([xr, yr]);
-                    element.updatePath();
+            if (state === 'draw') {
+                Vertex.createElement(xr, yr);
+
+                if (type === 'sector') {
+                    if (!element) {
+                        element = Sector.createElement();
+                        canvas.setState({
+                            state: [state, type, element]
+                        });
+                    }
+
+                    if (String(element.path[0]) === String([xr, yr])) {
+                        // Close sector
+                        element.classList.remove('sector-incomplete');
+                        canvas.setState({
+                            state: [state, type]
+                        });
+                    } else {
+                        element.path.push([xr, yr]);
+                        element.updatePath();
+                    }
                 }
             }
         }, true);
@@ -432,9 +446,14 @@
 <!-- 
 
     Состояния:
-        drawing
+        select
             sector
-                {sector}
             vertex
             line
+                [{selected}]
+        draw
+            sector [+]
+            vertex [?]
+            line [-]
+                {current} [+]
  -->
