@@ -57,7 +57,7 @@
             position: absolute;
             /* TODO: Движение за указателем */
             /* Как вариант, вообще можно с помощью cursor: и картинки...
-				Но тогда будет сложнее делать привязку к сетке  */
+                Но тогда будет сложнее делать привязку к сетке  */
             background: yellow;
             transform: translate(-50%, -50%);
         }
@@ -91,7 +91,7 @@
 
     <script>
         const Config = {
-            topViewRenderer: 0,
+            topViewRenderer: 2,
             screenSize: [2048, 2048]
         }
 
@@ -227,7 +227,7 @@
                         }
                     })
 
-                    if (Config.topViewRenderer === 0 || (Config.topViewRenderer === 1 && subpathes.length === 1)) {
+                    if (Config.topViewRenderer === 0 || ([1, 2].includes(Config.topViewRenderer) && subpathes.length === 1)) {
                         el.style.clipPath = `polygon(${el.path.map(e => e.map(e => e + 'px').join(' '))})`;
                     } else if (Config.topViewRenderer === 1) {
                         const time = Date.now();
@@ -242,11 +242,13 @@
                             out += `<path d="${svgPathBuilder(subpath)}"></path>`;
                         });
                         out += `</mask>
-						<pattern id="bg${time}" patternUnits="userSpaceOnUse" width="100%" height="100%">
-    						<use xlink:href="${bg}" x="0" y="0" width="100%" height="100%"></use>
-  						</pattern><!-- Oh f*ck this policy -->
-						</defs><path d="${svgPathBuilder(subpathes[0])}" mask="url(#substract${time})" style="fill:green" fill="url(\"#bg${time}\")"></path></svg>`;
+                        <pattern id="bg${time}" patternUnits="userSpaceOnUse" width="100%" height="100%">
+                            <use xlink:href="${bg}" x="0" y="0" width="100%" height="100%"></use>
+                        </pattern><!-- Oh f*ck this policy -->
+                        </defs><path d="${svgPathBuilder(subpathes[0])}" mask="url(#substract${time})" style="fill:green" fill="url(\"#bg${time}\")"></path></svg>`;
                         el.innerHTML = out;
+                    } else if (Config.topViewRenderer === 2) {
+                        el.style.clipPath = `polygon(${subpathes[0].map(e => e.map(e => e + 'px').join(' '))})`;
                     }
                 };
 
@@ -429,10 +431,10 @@
 
 <!-- 
 
-	Состояния:
-		drawing
-			sector
-				{sector}
-			vertex
-			line
+    Состояния:
+        drawing
+            sector
+                {sector}
+            vertex
+            line
  -->
