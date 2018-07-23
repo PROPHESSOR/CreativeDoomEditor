@@ -2,419 +2,427 @@
 <html lang="en">
 
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta http-equiv="X-UA-Compatible" content="ie=edge">
-	<title></title>
-	<style>
-		html,
-		body {
-			margin: 0;
-			padding: 0;
-		}
-
-		#canvas {
-			position: relative;
-		}
-
-		.background {
-			position: absolute;
-			background: black;
-			width: 100%;
-			height: 100%;
-		}
-
-		.grid {
-			position: absolute;
-			background-size: 16px 16px;
-			/* TODO: Изменяемый размер сетки */
-			background-image: linear-gradient(to right, grey 1px, transparent 1px), linear-gradient(to bottom, grey 1px, transparent 1px);
-			width: 100%;
-			height: 100%;
-		}
-
-		.sector {
-			position: absolute;
-			background: red;
-			/* TODO: Цвет/текстура сектора */
-			outline: 2px solid red;
-			width: 100%;
-			height: 100%;
-			clip-path: polygon(0px 0px);
-			/* TODO: Система перевода думометров в пиксели */
-		}
-
-		.sector-incomplete {
-			background: pink !important;
-		}
-
-		.sector:hover {
-			background: blue;
-			filter: brightness(1.5);
-		}
-
-		.cursor {
-			position: absolute;
-			/* TODO: Движение за указателем */
-			/* Как вариант, вообще можно с помощью cursor: и картинки...
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title></title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        
+        #canvas {
+            position: relative;
+        }
+        
+        .background {
+            position: absolute;
+            background: black;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .grid {
+            position: absolute;
+            background-size: 16px 16px;
+            /* TODO: Изменяемый размер сетки */
+            background-image: linear-gradient(to right, grey 1px, transparent 1px), linear-gradient(to bottom, grey 1px, transparent 1px);
+            width: 100%;
+            height: 100%;
+        }
+        
+        .sector {
+            position: absolute;
+            background: red;
+            /* TODO: Цвет/текстура сектора */
+            outline: 2px solid red;
+            width: 100%;
+            height: 100%;
+            clip-path: polygon(0px 0px);
+            /* TODO: Система перевода думометров в пиксели */
+        }
+        
+        .sector-incomplete {
+            background: pink !important;
+        }
+        
+        .sector:hover {
+            background: blue;
+            filter: brightness(1.5);
+        }
+        
+        .cursor {
+            position: absolute;
+            /* TODO: Движение за указателем */
+            /* Как вариант, вообще можно с помощью cursor: и картинки...
 				Но тогда будет сложнее делать привязку к сетке  */
-			background: yellow;
-			transform: translate(-50%, -50%);
-		}
-
-		.vertex {
-			position: absolute;
-			width: 8px;
-			height: 8px;
-			background: yellow;
-			transform: translate(-50%, -50%)
-		}
-
-		.line {
-			/* TODO: */
-		}
-	</style>
+            background: yellow;
+            transform: translate(-50%, -50%);
+        }
+        
+        .vertex {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: yellow;
+            transform: translate(-50%, -50%)
+        }
+        
+        .line {
+            /* TODO: */
+        }
+    </style>
 </head>
 
 <body>
-	<div id="canvas">
-		<div class="background"></div>
-		<div class="grid"></div>
-		<div id="elements">
-		</div>
-		<!-- <div class="cursor vertex"></div> -->
-	</div>
-	<textarea id="input"></textarea>
-	<button onclick="loadUDMF()">Загрузить карту</button>
+    <div id="canvas">
+        <div class="background"></div>
+        <div class="grid"></div>
+        <div id="elements">
+        </div>
+        <!-- <div class="cursor vertex"></div> -->
+    </div>
+    <textarea id="input"></textarea>
+    <button onclick="loadUDMF()">Загрузить карту</button>
 
-	<script src="udmf2json.js"></script>
+    <script src="udmf2json.js"></script>
 
-	<script>
-		const EXPERIMENTAL_RENDERER = false;
+    <script>
+        const Config = {
+            topViewRenderer: 0,
+            screenSize: [2048, 2048]
+        }
 
-		const canvas = document.querySelector('#canvas');
-		// Init
-		{
-			canvas.SCW = 2048;
-			canvas.SCH = 4096;
-			canvas.style.width = `${canvas.SCW}px`;
-			canvas.style.height = `${canvas.SCH}px`;
-			scroll(canvas.SCW / 2 - innerWidth / 2, canvas.SCH / 2 - innerHeight / 2)
-			canvas.events = {};
-			canvas.on = (event, func) => {
-				if(typeof func !== 'function') throw new TypeError('второй аргумент должен быть функцией!');
-				if(!(canvas.events[event] instanceof Array)) canvas.events[event] = [];
+        const canvas = document.querySelector('#canvas');
+        // Init
+        {
+            [canvas.SCW, canvas.SCH] = Config.screenSize;
+            canvas.style.width = `${canvas.SCW}px`;
+            canvas.style.height = `${canvas.SCH}px`;
+            scroll(canvas.SCW / 2 - innerWidth / 2, canvas.SCH / 2 - innerHeight / 2)
+            canvas.events = {};
+            canvas.on = (event, func) => {
+                if (typeof func !== 'function') throw new TypeError('второй аргумент должен быть функцией!');
+                if (!(canvas.events[event] instanceof Array)) canvas.events[event] = [];
 
-				canvas.events[event].push(func);
-			}
-			canvas.emit = (event, ...args) => {
-				if(!(canvas.events[event] instanceof Array)) return false;
+                canvas.events[event].push(func);
+            }
+            canvas.emit = (event, ...args) => {
+                if (!(canvas.events[event] instanceof Array)) return false;
 
-				for(const listener of canvas.events[event]) {
-					listener(...args);
-				}
+                for (const listener of canvas.events[event]) {
+                    listener(...args);
+                }
 
-				return true;
-			}
-			canvas.toUDMF = () => new UDMF(document.querySelectorAll('.sector'));
+                return true;
+            }
+            canvas.toUDMF = () => new UDMF(document.querySelectorAll('.sector'));
 
-			canvas.state = {
-				state: ['drawing', 'sector'] // Состояние
-			};
-			canvas.setState = (obj) => {
-				Object.assign(canvas.state, obj);
-				canvas.emit('state.update');
-			}
+            canvas.state = {
+                state: ['drawing', 'sector'] // Состояние
+            };
+            canvas.setState = (obj) => {
+                Object.assign(canvas.state, obj);
+                canvas.emit('state.update');
+            }
 
-			canvas.setState({});;
-		}
+            canvas.setState({});;
+        }
 
-		class Vertex {
-			constructor([x, y]) {
-				[this.x, this.y] = [x, y];
-			}
+        class Vertex {
+            constructor([x, y]) {
+                [this.x, this.y] = [x, y];
+            }
 
-			get identifier() {
-				return JSON.stringify(this);
-			}
+            get identifier() {
+                return JSON.stringify(this);
+            }
 
-			toUDMF() {
-				return `vertex {\n\tx: ${this.x};\n\ty: ${this.y};\n}`;
-			}
+            toUDMF() {
+                return `vertex {\n\tx: ${this.x};\n\ty: ${this.y};\n}`;
+            }
 
-			static createElement(x, y) {
-				const vertex = document.createElement('div');
-				vertex.classList.add('vertex');
-				vertex.style.left = `${x}px`;
-				vertex.style.top = `${y}px`;
-				document.querySelector('#elements').appendChild(vertex);
-			}
-		}
+            static createElement(x, y) {
+                const vertex = document.createElement('div');
+                vertex.classList.add('vertex');
+                vertex.style.left = `${x}px`;
+                vertex.style.top = `${y}px`;
+                document.querySelector('#elements').appendChild(vertex);
+            }
+        }
 
-		class Linedef {
-			constructor([v1, v2], vertexes) {
-				for(const i in vertexes) {
-					const vertex = vertexes[i];
+        class Linedef {
+            constructor([v1, v2], vertexes) {
+                for (const i in vertexes) {
+                    const vertex = vertexes[i];
 
-					if(vertex.identifier === v1.identifier) {
-						this.v1 = i;
-						break;
-					}
-				}
+                    if (vertex.identifier === v1.identifier) {
+                        this.v1 = i;
+                        break;
+                    }
+                }
 
-				if(!this.v1) console.warn('Не могу найти вершину с такими параметрами в списке вершин!', v1);
+                if (!this.v1) console.warn('Не могу найти вершину с такими параметрами в списке вершин!', v1);
 
-				for(const i in vertexes) { // TODO: В один цикл
-					const vertex = vertexes[i];
+                for (const i in vertexes) { // TODO: В один цикл
+                    const vertex = vertexes[i];
 
-					if(vertex.identifier === v2.identifier) {
-						this.v2 = i;
-						break;
-					}
-				}
+                    if (vertex.identifier === v2.identifier) {
+                        this.v2 = i;
+                        break;
+                    }
+                }
 
-				if(!this.v2) console.warn('Не могу найти вершину с такими параметрами в списке вершин!', v2);
-			}
-			toUDMF() {
-				return `linedef {\n\tv1: ${this.v1};\n\tv2: ${this.v2};\n\tsidefront: 0;\n}`;
-			}
-		}
+                if (!this.v2) console.warn('Не могу найти вершину с такими параметрами в списке вершин!', v2);
+            }
+            toUDMF() {
+                return `linedef {\n\tv1: ${this.v1};\n\tv2: ${this.v2};\n\tsidefront: 0;\n}`;
+            }
+        }
 
-		class Sidedef {
-			constructor(sector) {
-				this.sector = sector;
-			}
-			toUDMF() {
-				return `sidedef {\n\tsector: ${this.sector};\n}`;
-			}
-		}
+        class Sidedef {
+            constructor(sector) {
+                this.sector = sector;
+            }
+            toUDMF() {
+                return `sidedef {\n\tsector: ${this.sector};\n}`;
+            }
+        }
 
-		// FIXME:
-		const svgPathBuilder = (path) => {
-			let out = "";
-			path.forEach((e, i) => {
-				if(i === 0) {
-					return out += `M${e.join(' ')} `; // TODO: Это можно сделать в одну строку
-				}
+        // FIXME:
+        const svgPathBuilder = (path) => {
+            let out = "";
+            path.forEach((e, i) => {
+                if (i === 0) {
+                    return out += `M${e.join(' ')} `; // TODO: Это можно сделать в одну строку
+                }
 
-				out += `L${e.join(' ')} `;
-			});
-			out += 'Z';
+                out += `L${e.join(' ')} `;
+            });
+            out += 'Z';
 
-			return out;
-		}
+            return out;
+        }
 
-		class Sector {
-			toUDMF() {
-				return `sector {\n}`;
-			}
+        class Sector {
+            toUDMF() {
+                return `sector {\n}`;
+            }
 
-			static createElement() {
-				const el = document.createElement('div');
-				el.classList.add('sector');
-				el.classList.add('sector-incomplete');
-				el.path = [];
+            static createElement() {
+                const el = document.createElement('div');
+                el.classList.add('sector');
+                el.classList.add('sector-incomplete');
+                el.path = [];
 
-				el.updatePath = () => {
-					const subpathes = [];
-					let idx = 0;
-					el.path.forEach((e, i) => {
-						if(i !== idx && JSON.stringify(e) === JSON.stringify(el.path[idx])) {
-							subpathes.push(el.path.slice(idx, i));
-							idx = i + 1;
-						}
-					})
+                el.updatePath = () => {
+                    const subpathes = [];
+                    let idx = 0;
+                    el.path.forEach((e, i) => {
+                        if (i !== idx && JSON.stringify(e) === JSON.stringify(el.path[idx])) {
+                            subpathes.push(el.path.slice(idx, i));
+                            idx = i + 1;
+                        }
+                    })
 
-					if(subpathes.length === 1 || !EXPERIMENTAL_RENDERER)
-						el.style.clipPath = `polygon(${el.path.map(e => e.map(e => e + 'px').join(' '))})`;
-					else {
-						const time = Date.now();
-						el.style.clipPath = 'none'
-						const bg = el.style.backgroundImage.slice(5, -2);
-						el.style.backgroundImage = "none";
-						el.style.background = "none";
-						debugger;
-						let out = `<svg width="100%" height="100%"><defs><mask id="substract${time}"><rect width="100%" height="100%" fill="white"/>`;
-						subpathes.forEach((subpath, i) => {
-							if(i === 0) return;
-							out += `<path d="${svgPathBuilder(subpath)}"></path>`;
-						});
-						out += `</mask>
+                    if (Config.topViewRenderer === 0 || (Config.topViewRenderer === 1 && subpathes.length === 1)) {
+                        el.style.clipPath = `polygon(${el.path.map(e => e.map(e => e + 'px').join(' '))})`;
+                    } else if (Config.topViewRenderer === 1) {
+                        const time = Date.now();
+                        el.style.clipPath = 'none'
+                        const bg = el.style.backgroundImage.slice(5, -2);
+                        el.style.backgroundImage = "none";
+                        el.style.background = "none";
+                        debugger;
+                        let out = `<svg width="100%" height="100%"><defs><mask id="substract${time}"><rect width="100%" height="100%" fill="white"/>`;
+                        subpathes.forEach((subpath, i) => {
+                            if (i === 0) return;
+                            out += `<path d="${svgPathBuilder(subpath)}"></path>`;
+                        });
+                        out += `</mask>
 						<pattern id="bg${time}" patternUnits="userSpaceOnUse" width="100%" height="100%">
     						<use xlink:href="${bg}" x="0" y="0" width="100%" height="100%"></use>
   						</pattern><!-- Oh f*ck this policy -->
 						</defs><path d="${svgPathBuilder(subpathes[0])}" mask="url(#substract${time})" style="fill:green" fill="url(\"#bg${time}\")"></path></svg>`;
-						el.innerHTML = out;
-					}
-				};
+                        el.innerHTML = out;
+                    }
+                };
 
-				document.querySelector('#elements').appendChild(el);
+                document.querySelector('#elements').appendChild(el);
 
-				return el;
-			}
-		}
+                return el;
+            }
+        }
 
-		class UDMF {
-			constructor(elements) {
-				this.vertexes = [];
-				this.linedefs = [];
-				this.sidedefs = [];
-				this.sectors = [];
+        class UDMF {
+            constructor(elements) {
+                this.vertexes = [];
+                this.linedefs = [];
+                this.sidedefs = [];
+                this.sectors = [];
 
-				elements.forEach((element, i) => {
-					this.vertexes.push(...element.path.map(e => new Vertex(e)));
-					this.linedefs.push(...this.vertexes.map((e, i) => i === this.vertexes.length - 1 ? new Linedef([e, this.vertexes[0]], this.vertexes) : new Linedef([e, this.vertexes[i + 1]], this.vertexes)));
-					this.sidedefs.push(new Sidedef(i));
-					this.sectors.push(new Sector());
-				});
-			}
+                elements.forEach((element, i) => {
+                    this.vertexes.push(...element.path.map(e => new Vertex(e)));
+                    this.linedefs.push(...this.vertexes.map((e, i) => i === this.vertexes.length - 1 ? new Linedef([e, this.vertexes[0]], this.vertexes) : new Linedef([e, this.vertexes[i + 1]], this.vertexes)));
+                    this.sidedefs.push(new Sidedef(i));
+                    this.sectors.push(new Sector());
+                });
+            }
 
-			toJSON() {
-				return [...this.linedefs, ...this.sidedefs, ...this.vertexes, ... this.sectors];
-			}
+            toJSON() {
+                return [...this.linedefs, ...this.sidedefs, ...this.vertexes, ...this.sectors];
+            }
 
-			toUDMF() {
-				let out = '// Generated by CreativeDoomEditor\n\nnamespace = "zdoom";\n\n';
+            toUDMF() {
+                let out = '// Generated by CreativeDoomEditor\n\nnamespace = "zdoom";\n\n';
 
-				out += "// Things\n\n";
+                out += "// Things\n\n";
 
-				out += "// Linedefs\n\n";
-				for(const linedef of this.linedefs) { // TODO: В один цикл, или паттерн
-					out += linedef.toUDMF();
-					out += '\n\n';
-				}
+                out += "// Linedefs\n\n";
+                for (const linedef of this.linedefs) { // TODO: В один цикл, или паттерн
+                    out += linedef.toUDMF();
+                    out += '\n\n';
+                }
 
-				out += "// Sidedefs\n\n";
-				for(const sidedef of this.sidedefs) {
-					out += sidedef.toUDMF();
-					out += '\n\n';
-				}
+                out += "// Sidedefs\n\n";
+                for (const sidedef of this.sidedefs) {
+                    out += sidedef.toUDMF();
+                    out += '\n\n';
+                }
 
-				out += "// Vertexes\n\n";
-				for(const vertex of this.vertexes) {
-					out += vertex.toUDMF();
-					out += '\n\n';
-				}
+                out += "// Vertexes\n\n";
+                for (const vertex of this.vertexes) {
+                    out += vertex.toUDMF();
+                    out += '\n\n';
+                }
 
-				out += "// Sectors\n\n";
-				for(const sector of this.sectors) {
-					out += sector.toUDMF();
-					out += '\n\n';
-				}
+                out += "// Sectors\n\n";
+                for (const sector of this.sectors) {
+                    out += sector.toUDMF();
+                    out += '\n\n';
+                }
 
-				return out;
-			}
-		}
+                return out;
+            }
+        }
 
-		const grid = document.querySelector('.grid');
-		{
-			grid.sizex = 16;
-			grid.sizey = 16;
-			grid.scale = (x = 16, y = x) => {
-				grid.sizex = x;
-				grid.sizey = y;
-				grid.style.backgroundSize = `${x}px ${y}px`;
-			}
-		}
+        const grid = document.querySelector('.grid'); {
+            grid.sizex = 16;
+            grid.sizey = 16;
+            grid.scale = (x = 16, y = x) => {
+                grid.sizex = x;
+                grid.sizey = y;
+                grid.style.backgroundSize = `${x}px ${y}px`;
+            }
+        }
 
-		/** Возвращает координаты, привязанные к сетке
-		 */
-		const round = (x, y) => [Math.floor(x / grid.sizex + .5) * grid.sizex, Math.floor(y / grid.sizey + .5) * grid.sizex];
+        /** Возвращает координаты, привязанные к сетке
+         */
+        const round = (x, y) => [Math.floor(x / grid.sizex + .5) * grid.sizex, Math.floor(y / grid.sizey + .5) * grid.sizex];
 
-		window.addEventListener('keydown', (event) => {
-			console.log(event.keyCode);
+        window.addEventListener('keydown', (event) => {
+            console.log(event.keyCode);
 
-			switch (event.keyCode) {
-				case 219:
-					grid.scale(grid.sizex >> 1);
-					break;
-				case 221:
-					grid.scale(grid.sizex << 1);
-					break;
-				default:
-					break;
-			}
-		})
+            switch (event.keyCode) {
+                case 219:
+                    grid.scale(grid.sizex >> 1);
+                    break;
+                case 221:
+                    grid.scale(grid.sizex << 1);
+                    break;
+                default:
+                    break;
+            }
+        })
 
-		document.querySelector('#canvas').addEventListener('mousemove', (event) => {
-			const [x, y] = [event.offsetX, event.offsetY]
-			// console.log(x, y);
-			const [xr, yr] = round(x, y);
+        document.querySelector('#canvas').addEventListener('mousemove', (event) => {
+            const [x, y] = [event.offsetX, event.offsetY]
+            // console.log(x, y);
+            const [xr, yr] = round(x, y);
 
-			// document.querySelector('.cursor').style.left = `${xr}px`;
-			// document.querySelector('.cursor').style.top = `${yr}px`;
-		}, true)
+            // document.querySelector('.cursor').style.left = `${xr}px`;
+            // document.querySelector('.cursor').style.top = `${yr}px`;
+        }, true)
 
-		document.querySelector('#canvas').addEventListener('mousedown', (event) => {
-			if(event.target.classList.contains('vertex')) return;
+        document.querySelector('#canvas').addEventListener('mousedown', (event) => {
+            if (event.target.classList.contains('vertex')) return;
 
-			const [x, y] = [event.offsetX, event.offsetY]
-			console.log(x, y);
-			const [xr, yr] = round(x, y);
+            const [x, y] = [event.offsetX, event.offsetY]
+            console.log(x, y);
+            const [xr, yr] = round(x, y);
 
-			const vertex = Vertex.createElement(xr, yr);
+            const vertex = Vertex.createElement(xr, yr);
 
-			let [state, type, element] = canvas.state.state;
+            let [state, type, element] = canvas.state.state;
 
-			if(state === 'drawing' && type === 'sector') {
-				if(!element) {
-					element = Sector.createElement();
-					canvas.setState({state: [state, type, element]});
-				}
+            if (state === 'drawing' && type === 'sector') {
+                if (!element) {
+                    element = Sector.createElement();
+                    canvas.setState({
+                        state: [state, type, element]
+                    });
+                }
 
-				if(String(element.path[0]) === String([xr, yr])) {
-					// Close sector
-					element.classList.remove('sector-incomplete');
-					canvas.setState({state: [state, type]});
-				} else {
-					element.path.push([xr, yr]);
-					element.updatePath();
-				}
-			}
-		}, true);
-	</script>
+                if (String(element.path[0]) === String([xr, yr])) {
+                    // Close sector
+                    element.classList.remove('sector-incomplete');
+                    canvas.setState({
+                        state: [state, type]
+                    });
+                } else {
+                    element.path.push([xr, yr]);
+                    element.updatePath();
+                }
+            }
+        }, true);
+    </script>
 
-	<script>
-	function loadUDMF() {
-		const input = document.querySelector('#input').value;
-		const json = UDMF2JSON.udmf2json(input);
+    <script>
+        function loadUDMF() {
+            const input = document.querySelector('#input').value;
+            const json = UDMF2JSON.udmf2json(input);
 
-		const vertexes = json.filter(e => e[0] === 'vertex');
-		const linedefs = json.filter(e => e[0] === 'linedef');
-		const sidedefs = json.filter(e => e[0] === 'sidedef');
-		const sectors = json.filter(e => e[0] === 'sector');
+            const vertexes = json.filter(e => e[0] === 'vertex');
+            const linedefs = json.filter(e => e[0] === 'linedef');
+            const sidedefs = json.filter(e => e[0] === 'sidedef');
+            const sectors = json.filter(e => e[0] === 'sector');
 
-		sidedefs.forEach((side, i) => {
-			const sector = side[1].sector;
-			sectors[sector].sidedef = side;
-			linedefs.forEach((linedef, j) => {
-				if(linedef[1].sidefront === i
-				|| linedef[1].sideback === i) {
-					if(!sectors[sector].linedefs) sectors[sector].linedefs = [];
-					sectors[sector].linedefs.push(j);
-				}
-			});
-		});
+            sidedefs.forEach((side, i) => {
+                const sector = side[1].sector;
+                sectors[sector].sidedef = side;
+                linedefs.forEach((linedef, j) => {
+                    if (linedef[1].sidefront === i ||
+                        linedef[1].sideback === i) {
+                        if (!sectors[sector].linedefs) sectors[sector].linedefs = [];
+                        sectors[sector].linedefs.push(j);
+                    }
+                });
+            });
 
-		function getLine(v1, v2) {
-			return [[vertexes[v1][1].x, vertexes[v1][1].y], [vertexes[v2][1].x, vertexes[v2][1].y]];
-		}
+            function getLine(v1, v2) {
+                return [
+                    [vertexes[v1][1].x, vertexes[v1][1].y],
+                    [vertexes[v2][1].x, vertexes[v2][1].y]
+                ];
+            }
 
-		// Draw
-		sectors.forEach((sector, i) => {
-			const el = Sector.createElement();
-			sector.linedefs.forEach((linedef, j) => {
-				el.path.push(...getLine(linedefs[linedef][1].v1, linedefs[linedef][1].v2).map(e => [e[0] + canvas.SCW / 2, e[1] + canvas.SCH / 2]))
-			})
-			el.path.push(el.path[0]);
-			el.style.backgroundImage = `url(./resources/${sector[1].texturefloor}.png)`;
-			el.updatePath();
-			el.classList.remove('sector-incomplete');
-		})
+            // Draw
+            sectors.forEach((sector, i) => {
+                const el = Sector.createElement();
+                sector.linedefs.forEach((linedef, j) => {
+                    el.path.push(...getLine(linedefs[linedef][1].v1, linedefs[linedef][1].v2).map(e => [e[0] + canvas.SCW / 2, e[1] + canvas.SCH / 2]))
+                })
+                el.path.push(el.path[0]);
+                el.style.backgroundImage = `url(./resources/${sector[1].texturefloor.toUpperCase()}.png)`;
+                el.updatePath();
+                el.classList.remove('sector-incomplete');
+            })
 
-		vertexes.forEach(e => Vertex.createElement(e[1].x + canvas.SCW / 2, e[1].y + canvas.SCH / 2))
-	}
-	</script>
+            vertexes.forEach(e => Vertex.createElement(e[1].x + canvas.SCW / 2, e[1].y + canvas.SCH / 2))
+        }
+    </script>
 </body>
 
 </html>
